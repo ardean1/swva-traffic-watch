@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070b14">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <title>SWVA Traffic Watch</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header class="top">
+      <div class="brand">
+        <h1>SWVA Traffic Watch</h1>
+        <p class="sub">Marion · Southwest Virginia</p>
+      </div>
+      <div class="top-actions">
+        <button type="button" id="btn-refresh" class="btn" title="Refresh camera list">Refresh</button>
+        <button type="button" id="btn-grid" class="btn primary" title="Four-camera view">4 cameras</button>
+        <button type="button" id="btn-grid-town" class="btn" title="Fill 4 cameras by town">By town</button>
+      </div>
+    </header>
+
+    <p id="status" class="status" role="status" aria-live="polite">Loading cameras…</p>
+
+    <div class="presets" id="presets" aria-label="Quick presets"></div>
+
+    <div class="toolbar">
+      <input type="search" id="q" placeholder="Search town, route, MM…" autocomplete="off" aria-label="Search cameras">
+      <select id="town" aria-label="Filter by town">
+        <option value="">All towns</option>
+      </select>
+      <select id="route" aria-label="Filter by route">
+        <option value="">All routes</option>
+      </select>
+      <select id="sort" aria-label="Sort list">
+        <option value="town" selected>Sort: town</option>
+        <option value="marion">Sort: near Marion</option>
+        <option value="route">Sort: route</option>
+      </select>
+    </div>
+
+    <div class="main">
+      <div id="map" role="application" aria-label="Camera map"></div>
+      <aside class="list-pane">
+        <ul id="cam-list" class="cam-list" aria-label="Camera list"></ul>
+      </aside>
+    </div>
+
+    <footer class="foot">
+      Camera data © <a href="https://511.vdot.virginia.gov" target="_blank" rel="noopener">VDOT / 511 Virginia</a>
+      · Local viewer by Tony Dean
+    </footer>
+  </div>
+
+  <div id="viewer" class="overlay hidden" aria-hidden="true">
+    <div class="viewer-bar">
+      <button type="button" id="viewer-back" class="btn">← Back</button>
+      <h2 id="viewer-title" class="viewer-title">Camera</h2>
+      <button type="button" id="viewer-fs" class="btn primary" title="Fullscreen (F)">Fullscreen</button>
+    </div>
+    <div id="viewer-stage" class="stage">
+      <video id="viewer-video" playsinline muted autoplay></video>
+      <img id="viewer-img" alt="Camera snapshot" hidden>
+      <p id="viewer-hint" class="hint hidden"></p>
+    </div>
+    <p id="viewer-meta" class="meta"></p>
+  </div>
+
+  <div id="grid" class="overlay hidden" aria-hidden="true">
+    <div class="viewer-bar">
+      <button type="button" id="grid-back" class="btn">← Back</button>
+      <h2 class="viewer-title">4 cameras</h2>
+      <button type="button" id="grid-town-btn" class="btn" title="Search town to fill all 4">Town search</button>
+      <button type="button" id="grid-fs" class="btn primary" title="Fullscreen (F)">Fullscreen</button>
+    </div>
+    <div class="grid-presets" id="grid-presets"></div>
+    <div class="quad" id="quad">
+      <div class="slot" data-slot="0">
+        <div class="slot-head"><span class="slot-label">1</span><button type="button" class="btn tiny slot-clear" data-clear="0">Clear</button></div>
+        <div class="slot-body" data-body="0"><button type="button" class="slot-pick" data-pick="0">Pick camera</button></div>
+      </div>
+      <div class="slot" data-slot="1">
+        <div class="slot-head"><span class="slot-label">2</span><button type="button" class="btn tiny slot-clear" data-clear="1">Clear</button></div>
+        <div class="slot-body" data-body="1"><button type="button" class="slot-pick" data-pick="1">Pick camera</button></div>
+      </div>
+      <div class="slot" data-slot="2">
+        <div class="slot-head"><span class="slot-label">3</span><button type="button" class="btn tiny slot-clear" data-clear="2">Clear</button></div>
+        <div class="slot-body" data-body="2"><button type="button" class="slot-pick" data-pick="2">Pick camera</button></div>
+      </div>
+      <div class="slot" data-slot="3">
+        <div class="slot-head"><span class="slot-label">4</span><button type="button" class="btn tiny slot-clear" data-clear="3">Clear</button></div>
+        <div class="slot-body" data-body="3"><button type="button" class="slot-pick" data-pick="3">Pick camera</button></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="picker" class="overlay sheet hidden" aria-hidden="true">
+    <div class="viewer-bar">
+      <button type="button" id="picker-cancel" class="btn">Cancel</button>
+      <h2 class="viewer-title" id="picker-title">Pick for slot</h2>
+      <span></span>
+    </div>
+    <input type="search" id="picker-q" placeholder="Type a town: Marion, Chilhowie, Bristol…" autocomplete="off" aria-label="Search town or camera">
+    <div id="picker-fill" class="picker-fill"></div>
+    <ul id="picker-list" class="cam-list picker-list"></ul>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@1.5.17/dist/hls.min.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
